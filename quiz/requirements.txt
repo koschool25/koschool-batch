@@ -1,0 +1,8 @@
+openai==1.60.2
+pydantic==2.10.6
+APScheduler==3.11.0
+tqdm==4.67.1
+python-dotenv==1.0.1
+
+pymysql==1.1.1
+cryptography==44.0.0
