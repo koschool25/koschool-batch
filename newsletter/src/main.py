@@ -26,7 +26,7 @@ if __name__ == "__main__":
     scheduler.add_job(
         func=main,
         trigger='cron',
-        hour=23,
+        hour=6,
         minute=0,
         second=0,
         args=[]
