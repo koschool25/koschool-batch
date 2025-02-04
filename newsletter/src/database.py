@@ -62,14 +62,18 @@ def insert_newsletter_with_quiz(connection, newsletter_entity: NewsletterEntity,
         raise e
 
 
-def clear_newsletter_table():
+def clear_all_newsletters():
     try:
         connection = get_db_connection()
         with connection.cursor() as cursor:
             delete_query = "DELETE FROM newsletter"
             cursor.execute(delete_query)
+
+            delete_query = "DELETE FROM quiz where level = 3"
+            cursor.execute(delete_query)
+
             connection.commit()
-            print("newsletter 테이블의 모든 데이터가 삭제되었습니다.")
+            print("newsletter 테이블 및 quiz 테이블에 있는 모든 뉴스레터 퀴즈가 삭제되었습니다.")
     except pymysql.Error as e:
         print(f"데이터베이스 오류 발생: {e}")
     finally:
