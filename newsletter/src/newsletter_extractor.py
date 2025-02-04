@@ -82,7 +82,7 @@ JSON 각 필드별 요구사항:
 - question: 지정된 레벨에 맞는 명확하고 간단한 주관식 질문
 - answer: 정확한 정답 (주관식 답안으로 사용)
 - explanation: 해당 레벨 수준에 맞는 상세한 설명과 관련 맥락
-- multipleChoices: 4개의 선택지 배열 (첫 번째 요소가 반드시 정답)
+- multipleChoices: 3개의 오답 선택지 배열
 - keyword: 퀴즈 핵심 키워드 (이전 키워드와 중복되지 않아야 함)
 ---
 <퀴즈 작성 지침>
@@ -131,9 +131,13 @@ def search_category_newsletters(category: NewsletterCategoryEnum) -> list[Search
     for i, item in enumerate(items[:top_n]):
         pubDate = item.pubDate.text
         try:
+            original_link = extract_and_decode_bing_url(item.link.text)
+            if "msn" in original_link:
+                # MSN 뉴스는 홈페이지 포맷이 다름 -> 우선 제외
+                continue
             newsletter = SearchedNewsletter(
                 title=item.title.text,
-                link=extract_and_decode_bing_url(item.link.text),
+                link=original_link,
                 publish_date=datetime.strptime(
                     pubDate, "%a, %d %b %Y %H:%M:%S %Z"
                 ),
@@ -189,6 +193,9 @@ def extract_category_newsletters(category: NewsletterCategoryEnum):
             except openai.RateLimitError as e:
                 print("OpenAI API Rate limit 도달... 60초 후에 작업 이어서 진행")
                 time.sleep(60)
+                continue
+            except Exception as e:
+                print(f"뉴스레터 저장 중 에러 발생: {e}")
                 continue
 
             if n_saved_newsletters >= n_newsletter:

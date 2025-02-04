@@ -33,7 +33,7 @@ class QuizGenerator:
 - question: 지정된 레벨에 맞는 명확하고 간단한 주관식 질문
 - answer: 정확한 정답 (주관식 답안으로 사용)
 - explanation: 해당 레벨 수준에 맞는 상세한 설명과 관련 맥락
-- multipleChoices: 4개의 선택지 배열 (첫 번째 요소가 반드시 정답)
+- multipleChoices: 3개의 오답 선택지 배열
 - keyword: 퀴즈 핵심 키워드 (이전 키워드와 중복되지 않아야 함)
 ---
 <중복 방지 규칙>
