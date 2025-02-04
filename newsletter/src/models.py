@@ -92,5 +92,5 @@ class NewsletterEntity(BaseModel):
             category=category,
             summary=extracted_newsletter.summary,
             link=searched_newsletter.link,
-            stock=extracted_newsletter.relative_stock,
+            stock=extracted_newsletter.relative_stock if extracted_newsletter.relative_stock is not None else "없음",
         )
