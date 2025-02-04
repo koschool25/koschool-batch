@@ -11,7 +11,15 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from openai import OpenAI
 
-from models import ExtractedNewsletter, NewsletterCategoryEnum, SearchedNewsletter, NewsletterEntity
+from models import (
+    ExtractedNewsletter, 
+    NewsletterCategoryEnum, 
+    SearchedNewsletter, 
+    NewsletterEntity, 
+    NewsletterQuizGenerationError, 
+    NewsletterExtractionError, 
+    GeneratedNewsletterQuiz
+)
 from utils import extract_and_decode_bing_url, extract_content, is_similar_content
 from database import get_db_connection, insert_newsletter_with_quiz
 from embedding import TextEmbedder
@@ -40,23 +48,6 @@ JSON 각 필드별 요구사항:
 ---
 <관련 기업 추출>
 - 기사 내용과 관련된 기업 1개를 선정하여 기업 이름을 작성해주세요.
-- 관련된 기업이 없다면, "없음"을 작성하세요.
----
-<뉴스 관련 문제 출제>
-JSON 각 필드별 요구사항:
-- quiz.question: 지정된 레벨에 맞는 명확하고 간단한 주관식 질문
-- quiz.answer: 정확한 정답 (주관식 답안으로 사용)
-- quiz.explanation: 해당 레벨 수준에 맞는 상세한 설명과 관련 맥락
-- quiz.multipleChoices: 4개의 선택지 배열 (첫 번째 요소가 반드시 정답)
-- quiz.keyword: 퀴즈 핵심 키워드 (이전 키워드와 중복되지 않아야 함)
----
-퀴즈 작성 지침:
-1. 한국어를 사용
-2. 뉴스 기사와 관련된 퀴즈를 출제하고, 되도록 경제 및 투자와 관련된 문제를 출제
-3. 주관식 답을 맞출 수 있도록 되도록 정답은 단어 및 용어 위주로 출제
-4. 문제에 정답이 포함되지 않도록 출제
-5. 설명은 뉴스 기사를 근거로 학습자가 이해할 수 있는 수준으로 작성
-6. JSON 형식이 올바르게 유지되어야 함
 ---
 <뉴스 기사>
 {content}
@@ -80,6 +71,50 @@ JSON 각 필드별 요구사항:
             extracted_newsletter = result.parsed
 
             return extracted_newsletter
+
+
+    def generate_newsletter_quiz(self, content: str) -> GeneratedNewsletterQuiz:
+        system_prompt = f"""당신은 경제 뉴스 분석 및 퀴즈 생성 전문가입니다. 주어진 경제 뉴스 기사를 바탕으로 아래 형식에 맞게 퀴즈를 출제해주세요.:
+---
+<뉴스 관련 문제 출제>
+JSON 각 필드별 요구사항:
+- question: 지정된 레벨에 맞는 명확하고 간단한 주관식 질문
+- answer: 정확한 정답 (주관식 답안으로 사용)
+- explanation: 해당 레벨 수준에 맞는 상세한 설명과 관련 맥락
+- multipleChoices: 4개의 선택지 배열 (첫 번째 요소가 반드시 정답)
+- keyword: 퀴즈 핵심 키워드 (이전 키워드와 중복되지 않아야 함)
+---
+퀴즈 작성 지침:
+1. 한국어를 사용
+2. 뉴스 기사와 관련된 퀴즈를 출제하고, 되도록 경제 및 투자와 관련된 문제를 출제
+3. 지엽적인 문제가 나오지 않도록 뉴스 전반적인 내용을 바탕으로 문제를 출제
+4. 주관식 답을 맞출 수 있도록 되도록 정답은 단어 및 용어 위주로 출제
+5. 문제에 정답이 포함되지 않도록 출제
+6. 설명은 뉴스 기사를 근거로 학습자가 이해할 수 있는 수준으로 작성
+7. JSON 형식이 올바르게 유지되어야 함
+---
+<뉴스 기사>
+{content}
+---
+주어진 경제 뉴스 기사를 분석하여 뉴스 관련 퀴즈를 한국어로 생성해주세요.
+"""
+
+        completion = self.client.beta.chat.completions.parse(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+            ],
+            temperature=0,
+            response_format=GeneratedNewsletterQuiz,
+        )
+
+        result = completion.choices[0].message
+        if result.refusal:
+            raise NewsletterQuizGenerationError(f"뉴스레터 퀴즈 생성에 실패하였습니다.: {result.refusal}")
+        else:
+            generated_newsletter_quiz = result.parsed
+
+            return generated_newsletter_quiz
 
 
 def search_category_newsletters(category: NewsletterCategoryEnum) -> list[SearchedNewsletter]:
@@ -136,28 +171,29 @@ def extract_category_newsletters(category: NewsletterCategoryEnum):
             if is_similar_content(content_embedding, previous_content_embeddings):
                 print("유사한 뉴스레터가 이미 존재합니다")
                 continue
-            else:    
-                # 뉴스 요약문, 관련 종목
-                extractor = NewsletterExtractor(openai_api_key)
-                try:
-                    extracted_newsletter = extractor.extract(content)
-                    newsletter_entity = NewsletterEntity.make_newsletter(
-                        category,
-                        searched_newsletter,
-                        extracted_newsletter,
-                    )
-                    newsletter_quiz_entity = extracted_newsletter.to_newsletter_quiz_entity()
-                    insert_newsletter_with_quiz(connection, newsletter_entity, newsletter_quiz_entity)
-                    n_saved_newsletters += 1
-                except openai.RateLimitError as e:
-                    print("OpenAI API Rate limit 도달... 60초 후에 작업 이어서 진행")
-                    time.sleep(60)
-                    continue
 
-                if n_saved_newsletters >= n_newsletter:
-                    break
+            # 뉴스 요약문, 관련 종목, 퀴즈 추출
+            extractor = NewsletterExtractor(openai_api_key)
+            try:
+                extracted_newsletter = extractor.extract(content)
+                generated_newsletter_quiz = extractor.generate_newsletter_quiz(content)
+                newsletter_entity = NewsletterEntity.make_newsletter(
+                    category,
+                    searched_newsletter,
+                    extracted_newsletter,
+                )
+                newsletter_quiz_entity = generated_newsletter_quiz.to_newsletter_quiz_entity()
+                insert_newsletter_with_quiz(connection, newsletter_entity, newsletter_quiz_entity)
+                n_saved_newsletters += 1
+            except openai.RateLimitError as e:
+                print("OpenAI API Rate limit 도달... 60초 후에 작업 이어서 진행")
+                time.sleep(60)
+                continue
 
-                previous_content_embeddings.append(content_embedding)
+            if n_saved_newsletters >= n_newsletter:
+                break
+
+            previous_content_embeddings.append(content_embedding)
     except pymysql.Error as e:
         print(f"데이터베이스 오류 발생: {e}")
     finally:

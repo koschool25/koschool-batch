@@ -12,6 +12,10 @@ class NewsletterExtractionError(Exception):
     pass
 
 
+class NewsletterQuizGenerationError(Exception):
+    pass
+
+
 class NewsletterCategoryEnum(Enum):
     ENERGY = "에너지"
     MATERIALS = "소재"
@@ -32,15 +36,6 @@ class SearchedNewsletter(BaseModel):
     publish_date: datetime
 
 
-class NewsletterQuiz(BaseModel):
-    question: str
-    answer: str
-    explanation: str
-    wrong_answer1: str
-    wrong_answer2: str
-    wrong_answer3: str
-
-
 class NewsletterQuizEntity(BaseModel):
     level: int
     question: str
@@ -51,21 +46,29 @@ class NewsletterQuizEntity(BaseModel):
     wrong_answer3: str
 
 
-class ExtractedNewsletter(BaseModel):
-    summary: str
-    relative_stock: Optional[str] = None
-    quiz: NewsletterQuiz
+class GeneratedNewsletterQuiz(BaseModel):
+    question: str
+    answer: str
+    explanation: str
+    wrong_answer1: str
+    wrong_answer2: str
+    wrong_answer3: str
 
     def to_newsletter_quiz_entity(self) -> NewsletterQuizEntity:
         return NewsletterQuizEntity(
             level=3,
-            question=self.quiz.question,
-            answer=self.quiz.answer,
-            explanation=self.quiz.explanation,
-            wrong_answer1=self.quiz.wrong_answer1,
-            wrong_answer2=self.quiz.wrong_answer2,
-            wrong_answer3=self.quiz.wrong_answer3,
+            question=self.question,
+            answer=self.answer,
+            explanation=self.explanation,
+            wrong_answer1=self.wrong_answer1,
+            wrong_answer2=self.wrong_answer2,
+            wrong_answer3=self.wrong_answer3,
         )
+
+
+class ExtractedNewsletter(BaseModel):
+    summary: str
+    relative_stock: Optional[str] = None
 
 
 class NewsletterEntity(BaseModel):
