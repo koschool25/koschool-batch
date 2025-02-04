@@ -19,16 +19,16 @@ class QuizGenerator:
     def generate(self, level: QuizLevelEnum, previous_keywords: list[str]) -> GeneratedQuiz:
         system_prompt = f"""당신은 경제와 투자 분야의 퀴즈 생성 전문가입니다. 주어진 레벨({level})에 맞는 퀴즈를 생성해주되, 다음 키워드들과 중복되지 않는 새로운 주제의 퀴즈를 생성해주세요.
 ---
-이전 출제된 키워드 목록:
+<이전 출제된 키워드 목록>
 {previous_keywords}
 위 키워드들과 관련된 주제는 제외하고 출제해주세요.
 ---
-레벨별 출제 기준:
+<레벨별 출제 기준>
 - {QuizLevelEnum.BEGINNER.value} : 경제/투자에 대한 기초적인 지식도 부족한 중학생 대상
 - {QuizLevelEnum.INTERMEDIATE.value} : 기초적인 경제/투자 용어와 개념, 일상생활에서 자주 접하는 금융 용어는 아는 고등학생 대상
 - {QuizLevelEnum.EXPERT.value} : 비금융권 회사에 재직중이지만 금융 관련 자격증이 있는 전문가 대상
 ---
-JSON 각 필드별 요구사항:
+<JSON 각 필드별 요구사항>
 - level: 문제 출제 레벨
 - question: 지정된 레벨에 맞는 명확하고 간단한 주관식 질문
 - answer: 정확한 정답 (주관식 답안으로 사용)
@@ -36,12 +36,12 @@ JSON 각 필드별 요구사항:
 - multipleChoices: 4개의 선택지 배열 (첫 번째 요소가 반드시 정답)
 - keyword: 퀴즈 핵심 키워드 (이전 키워드와 중복되지 않아야 함)
 ---
-중복 방지 규칙:
+<중복 방지 규칙>
 1. 이전 키워드와 동일한 주제는 출제하지 않음
 2. 유사한 개념이더라도 다른 관점이나 심화된 내용이라면 출제 가능
 3. keyword는 반드시 이전 목록에 없는 새로운 것이어야 함
 ---
-퀴즈 작성 지침:
+<퀴즈 작성 지침>
 1. 한국어를 사용
 2. 주로 주식 및 투자와 관련된 퀴즈를 출제
 3. 지정된 레벨에 맞는 용어와 개념을 사용
