@@ -4,6 +4,7 @@ from typing import Optional
 
 from newspaper import Article
 from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.utils.math import cosine_similarity
 
 
 def extract_content(link: str) -> str:
